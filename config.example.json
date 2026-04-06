@@ -1,0 +1,5 @@
+{
+  "apiEndpoint": "https://your-worker.your-subdomain.workers.dev/api/update",
+  "updateToken": "your-secure-token-here",
+  "intervalMs": 10000
+}

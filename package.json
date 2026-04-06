@@ -1,0 +1,14 @@
+{
+  "name": "yzmm-serverstatus-agent",
+  "version": "1.0.0",
+  "description": "Agent for collecting and pushing server status to Cloudflare Workers",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "systeminformation": "^5.21.0",
+    "node-fetch": "^2.7.0"
+  }
+}
