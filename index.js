@@ -9,24 +9,43 @@ const fetch = require('node-fetch');
 const fs = require('fs');
 const path = require('path');
 
-// 加载配置
-const configPath = path.join(__dirname, 'config.json');
-if (!fs.existsSync(configPath)) {
-    console.error('❌ 配置文件不存在！请复制 config.example.json 为 config.json 并填写配置');
-    process.exit(1);
+// 加载配置（优先使用环境变量）
+const config = {
+    apiEndpoint: process.env.API_ENDPOINT,
+    updateToken: process.env.UPDATE_TOKEN,
+    intervalMs: parseInt(process.env.INTERVAL_MS) || 30000
+};
+
+// 如果环境变量未设置，尝试从配置文件加载
+if (!config.apiEndpoint || !config.updateToken) {
+    const configPath = path.join(__dirname, 'config.json');
+    if (fs.existsSync(configPath)) {
+        const fileConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        config.apiEndpoint = config.apiEndpoint || fileConfig.apiEndpoint;
+        config.updateToken = config.updateToken || fileConfig.updateToken;
+        config.intervalMs = config.intervalMs || fileConfig.intervalMs;
+    }
 }
 
-const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+if (!config.apiEndpoint || !config.updateToken) {
+    console.error('❌ 请配置 API_ENDPOINT 和 UPDATE_TOKEN 环境变量，或创建 config.json');
+    process.exit(1);
+}
 
 // 获取系统状态
 async function getSystemStatus() {
     try {
-        const [cpuData, cpuLoad, mem, time, loadAvg] = await Promise.all([
-            si.cpu(),
-            si.currentLoad(),
-            si.mem(),
-            si.time(),
-            si.currentLoad().then(data => data.avgLoad || null).catch(() => null)
+        // Docker 环境下读取宿主机信息
+        const siOptions = {};
+        if (fs.existsSync('/host/proc')) {
+            siOptions.path = '/host';
+        }
+
+        const [cpuData, cpuLoad, mem, time] = await Promise.all([
+            si.cpu(siOptions),
+            si.currentLoad(siOptions),
+            si.mem(siOptions),
+            si.time(siOptions)
         ]);
 
         // 获取系统负载（Linux/Mac有，Windows需要用其他方式）
