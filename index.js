@@ -35,17 +35,11 @@ if (!config.apiEndpoint || !config.updateToken) {
 // 获取系统状态
 async function getSystemStatus() {
     try {
-        // Docker 环境下读取宿主机信息
-        const siOptions = {};
-        if (fs.existsSync('/host/proc')) {
-            siOptions.path = '/host';
-        }
-
         const [cpuData, cpuLoad, mem, time] = await Promise.all([
-            si.cpu(siOptions),
-            si.currentLoad(siOptions),
-            si.mem(siOptions),
-            si.time(siOptions)
+            si.cpu(),
+            si.currentLoad(),
+            si.mem(),
+            si.time()
         ]);
 
         // 获取系统负载（Linux/Mac有，Windows需要用其他方式）
