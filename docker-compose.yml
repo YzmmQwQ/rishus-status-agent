@@ -5,13 +5,13 @@ services:
     build: .
     container_name: yzmm-status-agent
     restart: unless-stopped
+    network_mode: host
+    pid: host
     environment:
       - API_ENDPOINT=https://你的pages域名/api/update
       - UPDATE_TOKEN=你的UPDATE_TOKEN
       - INTERVAL_MS=30000
     volumes:
-      # 挂载系统信息目录（用于读取系统状态）
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
+      - /proc:/proc:ro
+      - /sys:/sys:ro
       - /etc/os-release:/etc/os-release:ro
-    command: node index.js
