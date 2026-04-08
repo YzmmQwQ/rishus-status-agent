@@ -10,7 +10,7 @@ services:
     environment:
       - API_ENDPOINT=https://你的pages域名/api/update
       - UPDATE_TOKEN=你的UPDATE_TOKEN
-      - INTERVAL_MS=30000
+      - INTERVAL_MS=60000
     volumes:
       - /proc:/proc:ro
       - /sys:/sys:ro
