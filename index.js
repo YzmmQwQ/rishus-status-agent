@@ -58,7 +58,7 @@ function getCoreTypes() {
 // 解析内存信息
 function parseMemoryInfo(memLayout) {
     if (!memLayout || memLayout.length === 0) {
-        return { type: null, channels: 0, sizeText: null };
+        return { type: null, channels: 0, sizeText: null, speed: null };
     }
 
     // 获取内存类型 (DDR4, DDR5 等)
@@ -69,9 +69,12 @@ function parseMemoryInfo(memLayout) {
 
     // 计算单条容量
     const sizes = memLayout.filter(m => m.size > 0).map(m => Math.round(m.size / 1024 / 1024 / 1024));
-    const sizeText = sizes.length > 0 ? `${sizes[0]}GBx${channels}` : null;
+    const sizeText = sizes.length > 0 ? `${sizes[0]}GBx${channels}通道` : null;
 
-    return { type, channels, sizeText };
+    // 获取频率 (MT/s)
+    const speed = memLayout[0]?.clockSpeed || null;
+
+    return { type, channels, sizeText, speed };
 }
 
 // 获取系统状态
@@ -127,7 +130,8 @@ async function getSystemStatus() {
                 used: mem.used,
                 percent: (mem.used / mem.total) * 100,
                 type: memoryInfo.type,
-                sizeText: memoryInfo.sizeText
+                sizeText: memoryInfo.sizeText,
+                speed: memoryInfo.speed
             },
             uptime: time.uptime,
             load: load,
