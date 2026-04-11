@@ -11,7 +11,6 @@ services:
       - API_ENDPOINT=https://你的pages域名/api/update
       - UPDATE_TOKEN=你的UPDATE_TOKEN
       - INTERVAL_MS=60000
-      - LOCAL_SERVICES=AstrBot:6185  # 格式: 服务名:端口,服务名:端口
       - CPU_CORES=8:12  # 大核:小核，不配置则使用默认显示
     volumes:
       - /proc:/proc:ro

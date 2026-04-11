@@ -6,7 +6,6 @@
 
 const si = require('systeminformation');
 const fetch = require('node-fetch');
-const net = require('net');
 const fs = require('fs');
 const path = require('path');
 
@@ -15,11 +14,6 @@ const config = {
     apiEndpoint: process.env.API_ENDPOINT,
     updateToken: process.env.UPDATE_TOKEN,
     intervalMs: parseInt(process.env.INTERVAL_MS) || 30000,
-    // 本地服务检测配置
-    localServices: (process.env.LOCAL_SERVICES || 'AstrBot:6185').split(',').map(s => {
-        const [name, port] = s.split(':');
-        return { name, host: 'localhost', port: parseInt(port) };
-    }),
     // CPU 大小核配置（格式: 大核数:小核数，如 8:12）
     cpuCores: process.env.CPU_CORES || null
 };
@@ -38,43 +32,6 @@ if (!config.apiEndpoint || !config.updateToken) {
 if (!config.apiEndpoint || !config.updateToken) {
     console.error('❌ 请配置 API_ENDPOINT 和 UPDATE_TOKEN 环境变量，或创建 config.json');
     process.exit(1);
-}
-
-// 检测本地服务端口是否在线
-async function checkLocalService(host, port) {
-    return new Promise((resolve) => {
-        const socket = new net.Socket();
-        const timeout = 3000;
-
-        socket.setTimeout(timeout);
-        socket.on('connect', () => {
-            socket.destroy();
-            resolve({ online: true });
-        });
-        socket.on('timeout', () => {
-            socket.destroy();
-            resolve({ online: false });
-        });
-        socket.on('error', () => {
-            resolve({ online: false });
-        });
-        socket.connect(port, host);
-    });
-}
-
-// 检测所有本地服务
-async function checkLocalServices() {
-    const results = [];
-    for (const service of config.localServices) {
-        const status = await checkLocalService(service.host, service.port);
-        results.push({
-            name: service.name,
-            host: service.host,
-            port: service.port,
-            online: status.online
-        });
-    }
-    return results;
 }
 
 // 检测大小核信息
@@ -198,16 +155,9 @@ async function main() {
 async function collectAndPush() {
     console.log(`\n[${new Date().toLocaleTimeString()}] 开始收集数据...`);
 
-    const [systemData, localServices] = await Promise.all([
-        getSystemStatus(),
-        checkLocalServices()
-    ]);
-
+    const systemData = await getSystemStatus();
     if (systemData) {
-        await pushData({
-            ...systemData,
-            localServices
-        });
+        await pushData(systemData);
     }
 }
 
