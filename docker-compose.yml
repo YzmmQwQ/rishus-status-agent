@@ -11,7 +11,8 @@ services:
       - API_ENDPOINT=https://你的pages域名/api/update
       - UPDATE_TOKEN=你的UPDATE_TOKEN
       - INTERVAL_MS=60000
-      - CPU_CORES=8:12  # 大核:小核，不配置则使用默认显示
+      - CPU_CORES=8:12  # 大核:小核
+      - MEMORY_INFO=DDR5 32GBx2通道 5600MT/s  # 内存信息，不配置则不显示
     volumes:
       - /proc:/proc:ro
       - /sys:/sys:ro

@@ -15,7 +15,9 @@ const config = {
     updateToken: process.env.UPDATE_TOKEN,
     intervalMs: parseInt(process.env.INTERVAL_MS) || 30000,
     // CPU 大小核配置（格式: 大核数:小核数，如 8:12）
-    cpuCores: process.env.CPU_CORES || null
+    cpuCores: process.env.CPU_CORES || null,
+    // 内存配置（格式: DDR5 32GBx2通道 5600MT/s）
+    memoryInfo: process.env.MEMORY_INFO || null
 };
 
 // 如果环境变量未设置，尝试从配置文件加载
@@ -55,43 +57,17 @@ function getCoreTypes() {
     return { performance: 0, efficiency: 0, hasHybrid: false };
 }
 
-// 解析内存信息
-function parseMemoryInfo(memLayout) {
-    if (!memLayout || memLayout.length === 0) {
-        return { type: null, channels: 0, sizeText: null, speed: null };
-    }
-
-    // 获取内存类型 (DDR4, DDR5 等)
-    const type = memLayout[0]?.type || null;
-
-    // 统计通道数（不同 slot 的内存条）
-    const channels = memLayout.filter(m => m.size > 0).length;
-
-    // 计算单条容量
-    const sizes = memLayout.filter(m => m.size > 0).map(m => Math.round(m.size / 1024 / 1024 / 1024));
-    const sizeText = sizes.length > 0 ? `${sizes[0]}GBx${channels}通道` : null;
-
-    // 获取频率 (MT/s)
-    const speed = memLayout[0]?.clockSpeed || null;
-
-    return { type, channels, sizeText, speed };
-}
-
 // 获取系统状态
 async function getSystemStatus() {
     try {
-        const [cpuData, cpuLoad, mem, time, memLayout] = await Promise.all([
+        const [cpuData, cpuLoad, mem, time] = await Promise.all([
             si.cpu(),
             si.currentLoad(),
             si.mem(),
-            si.time(),
-            si.memLayout().catch(() => [])
+            si.time()
         ]);
 
         const coreTypes = getCoreTypes();
-
-        // 解析内存信息
-        const memoryInfo = parseMemoryInfo(memLayout);
 
         // 获取系统负载（Linux/Mac有，Windows需要用其他方式）
         let load = [0, 0, 0];
@@ -129,9 +105,7 @@ async function getSystemStatus() {
                 total: mem.total,
                 used: mem.used,
                 percent: (mem.used / mem.total) * 100,
-                type: memoryInfo.type,
-                sizeText: memoryInfo.sizeText,
-                speed: memoryInfo.speed
+                info: config.memoryInfo
             },
             uptime: time.uptime,
             load: load,
