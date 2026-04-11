@@ -19,7 +19,9 @@ const config = {
     localServices: (process.env.LOCAL_SERVICES || 'AstrBot:6185').split(',').map(s => {
         const [name, port] = s.split(':');
         return { name, host: 'localhost', port: parseInt(port) };
-    })
+    }),
+    // CPU 大小核配置（格式: 大核数:小核数，如 8:12）
+    cpuCores: process.env.CPU_CORES || null
 };
 
 // 如果环境变量未设置，尝试从配置文件加载
@@ -75,89 +77,38 @@ async function checkLocalServices() {
     return results;
 }
 
-// 检测大小核信息（仅Linux）
-async function detectCoreTypes() {
-    try {
-        const fs = require('fs');
-        const path = require('path');
-        const os = require('os');
+// 检测大小核信息
+function getCoreTypes() {
+    const os = require('os');
+    const totalCores = os.cpus().length;
 
-        const cpus = os.cpus();
-        const totalCores = cpus.length;
-
-        // 尝试从 /sys/devices/system/cpu/ 读取核心类型
-        let performanceCores = 0;
-        let efficiencyCores = 0;
-
-        if (process.platform === 'linux') {
-            for (let i = 0; i < totalCores; i++) {
-                try {
-                    // 读取核心的 CPU ID（用于判断是否是同一个物理核心的超线程）
-                    const packageId = fs.readFileSync(`/sys/devices/system/cpu/cpu${i}/topology/physical_package_id`, 'utf8').trim();
-                    const coreId = fs.readFileSync(`/sys/devices/system/cpu/cpu${i}/topology/core_id`, 'utf8').trim();
-
-                    // 读取核心频率范围
-                    const baseFreqPath = `/sys/devices/system/cpu/cpu${i}/cpufreq/base_frequency`;
-                    if (fs.existsSync(baseFreqPath)) {
-                        const baseFreq = parseInt(fs.readFileSync(baseFreqPath, 'utf8').trim());
-                        // 假设高频核心是性能核心
-                        if (baseFreq > 2500000) { // 2.5GHz
-                            performanceCores++;
-                        } else {
-                            efficiencyCores++;
-                        }
-                    }
-                } catch (e) {
-                    // 忽略读取失败
-                }
-            }
+    // 如果配置了大小核，直接使用
+    if (config.cpuCores) {
+        const [p, e] = config.cpuCores.split(':').map(Number);
+        if (p > 0 && e >= 0) {
+            return {
+                performance: p,
+                efficiency: e,
+                hasHybrid: p > 0 && e > 0
+            };
         }
-
-        // 如果无法检测，回退到估算
-        if (performanceCores === 0 && efficiencyCores === 0) {
-            // 根据CPU型号估算（常见大小核CPU）
-            const model = cpus[0]?.model || '';
-            if (model.includes('i9-') || model.includes('i7-')) {
-                // Intel 12/13/14代常见配置：假设 P-core 数量
-                const match = model.match(/i[579]-(\d+)/);
-                if (match) {
-                    const modelNum = parseInt(match[1]);
-                    // 粗略估算：高端型号通常有8个P-core
-                    if (modelNum >= 13700) {
-                        performanceCores = 8;
-                    } else if (modelNum >= 12700) {
-                        performanceCores = modelNum >= 14700 ? 8 : 6;
-                    } else {
-                        performanceCores = Math.floor(totalCores / 2);
-                    }
-                }
-            }
-            if (performanceCores === 0) {
-                performanceCores = Math.floor(totalCores / 2);
-            }
-            efficiencyCores = totalCores - performanceCores;
-        }
-
-        return {
-            performance: performanceCores,
-            efficiency: efficiencyCores,
-            hasHybrid: performanceCores > 0 && efficiencyCores > 0
-        };
-    } catch (e) {
-        return { performance: 0, efficiency: 0, hasHybrid: false };
     }
+
+    // 否则返回空，使用默认显示
+    return { performance: 0, efficiency: 0, hasHybrid: false };
 }
 
 // 获取系统状态
 async function getSystemStatus() {
     try {
-        const [cpuData, cpuLoad, mem, time, coreTypes] = await Promise.all([
+        const [cpuData, cpuLoad, mem, time] = await Promise.all([
             si.cpu(),
             si.currentLoad(),
             si.mem(),
-            si.time(),
-            detectCoreTypes()
+            si.time()
         ]);
+
+        const coreTypes = getCoreTypes();
 
         // 获取系统负载（Linux/Mac有，Windows需要用其他方式）
         let load = [0, 0, 0];
