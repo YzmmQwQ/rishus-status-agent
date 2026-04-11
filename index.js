@@ -55,17 +55,40 @@ function getCoreTypes() {
     return { performance: 0, efficiency: 0, hasHybrid: false };
 }
 
+// 解析内存信息
+function parseMemoryInfo(memLayout) {
+    if (!memLayout || memLayout.length === 0) {
+        return { type: null, channels: 0, sizeText: null };
+    }
+
+    // 获取内存类型 (DDR4, DDR5 等)
+    const type = memLayout[0]?.type || null;
+
+    // 统计通道数（不同 slot 的内存条）
+    const channels = memLayout.filter(m => m.size > 0).length;
+
+    // 计算单条容量
+    const sizes = memLayout.filter(m => m.size > 0).map(m => Math.round(m.size / 1024 / 1024 / 1024));
+    const sizeText = sizes.length > 0 ? `${sizes[0]}GBx${channels}` : null;
+
+    return { type, channels, sizeText };
+}
+
 // 获取系统状态
 async function getSystemStatus() {
     try {
-        const [cpuData, cpuLoad, mem, time] = await Promise.all([
+        const [cpuData, cpuLoad, mem, time, memLayout] = await Promise.all([
             si.cpu(),
             si.currentLoad(),
             si.mem(),
-            si.time()
+            si.time(),
+            si.memLayout().catch(() => [])
         ]);
 
         const coreTypes = getCoreTypes();
+
+        // 解析内存信息
+        const memoryInfo = parseMemoryInfo(memLayout);
 
         // 获取系统负载（Linux/Mac有，Windows需要用其他方式）
         let load = [0, 0, 0];
@@ -102,7 +125,9 @@ async function getSystemStatus() {
             memory: {
                 total: mem.total,
                 used: mem.used,
-                percent: (mem.used / mem.total) * 100
+                percent: (mem.used / mem.total) * 100,
+                type: memoryInfo.type,
+                sizeText: memoryInfo.sizeText
             },
             uptime: time.uptime,
             load: load,
